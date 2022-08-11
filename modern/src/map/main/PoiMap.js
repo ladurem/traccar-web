@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useId, useEffect, useState } from 'react';
 import { kml } from '@tmcw/togeojson';
-
 import { useTheme } from '@mui/styles';
 import { map } from '../core/MapView';
 import { useEffectAsync } from '../../reactHelper';
 import { usePreference } from '../../common/util/preferences';
+import { findFonts } from '../core/mapUtil';
 
 const PoiMap = () => {
-  const id = 'poi';
+  const id = useId();
 
   const theme = useTheme();
 
@@ -55,7 +55,7 @@ const PoiMap = () => {
           'text-field': '{name}',
           'text-anchor': 'bottom',
           'text-offset': [0, -0.5],
-          'text-font': ['Roboto Regular'],
+          'text-font': findFonts(map),
           'text-size': 12,
         },
         paint: {
@@ -78,7 +78,7 @@ const PoiMap = () => {
         }
       };
     }
-    return null;
+    return () => {};
   }, [data]);
 
   return null;

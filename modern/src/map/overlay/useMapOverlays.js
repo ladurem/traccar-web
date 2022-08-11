@@ -6,6 +6,7 @@ const sourceCustom = (urls) => ({
   type: 'raster',
   tiles: urls,
   tileSize: 256,
+  maxzoom: 18,
 });
 
 const sourceOpenWeather = (style, key) => sourceCustom([
@@ -24,7 +25,7 @@ export default () => {
     {
       id: 'openSeaMap',
       title: t('mapOpenSeaMap'),
-      source: sourceCustom(['http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png']),
+      source: sourceCustom(['https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png']),
       available: true,
     },
     {

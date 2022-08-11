@@ -11,16 +11,12 @@ import {
   MenuItem,
   FormControlLabel,
   Checkbox,
-  InputAdornment,
-  IconButton,
-  OutlinedInput,
   FormGroup,
   TextField,
   Button,
 } from '@mui/material';
 import makeStyles from '@mui/styles/makeStyles';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import CachedIcon from '@mui/icons-material/Cached';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import { useDispatch, useSelector } from 'react-redux';
 import moment from 'moment';
@@ -34,9 +30,9 @@ import SelectField from '../common/components/SelectField';
 import SettingsMenu from './components/SettingsMenu';
 import useCommonUserAttributes from '../common/attributes/useCommonUserAttributes';
 import { useAdministrator, useRestriction, useManager } from '../common/util/permissions';
-import { prefixString } from '../common/util/stringUtils';
 import useQuery from '../common/util/useQuery';
 import { useCatch } from '../reactHelper';
+import { formatNotificationTitle } from '../common/util/formatter';
 
 const useStyles = makeStyles((theme) => ({
   details: {
@@ -58,6 +54,7 @@ const UserPage = () => {
   const fixedEmail = useRestriction('fixedEmail');
 
   const currentUser = useSelector((state) => state.session.user);
+  const registrationEnabled = useSelector((state) => state.session.server.registration);
 
   const commonUserAttributes = useCommonUserAttributes(t);
   const userAttributes = useUserAttributes(t);
@@ -262,32 +259,11 @@ const UserPage = () => {
               </Typography>
             </AccordionSummary>
             <AccordionDetails className={classes.details}>
-              <FormControl>
-                <InputLabel>{t('userToken')}</InputLabel>
-                <OutlinedInput
-                  type="text"
-                  label={t('userToken')}
-                  value={item.token || ''}
-                  onChange={(e) => setItem({ ...item, token: e.target.value })}
-                  endAdornment={(
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          const token = [...Array(30)].map(() => Math.random().toString(36)[2]).join('');
-                          setItem({ ...item, token });
-                        }}
-                      >
-                        <CachedIcon fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  )}
-                />
-              </FormControl>
+              token
               <TextField
                 label={t('userExpirationTime')}
                 type="date"
-                value={(item.expirationTime && moment(item.expirationTime).format(moment.HTML5_FMT.DATE)) || '2999-01-01'}
+                value={(item.expirationTime && moment(item.expirationTime).locale('en').format(moment.HTML5_FMT.DATE)) || '2099-01-01'}
                 onChange={(e) => setItem({ ...item, expirationTime: moment(e.target.value, moment.HTML5_FMT.DATE).format() })}
                 disabled={!manager}
               />
@@ -345,12 +321,13 @@ const UserPage = () => {
             </AccordionDetails>
           </Accordion>
           <EditAttributesAccordion
+            attribute={attribute}
             attributes={item.attributes}
             setAttributes={(attributes) => setItem({ ...item, attributes })}
             definitions={{ ...commonUserAttributes, ...userAttributes }}
             focusAttribute={attribute}
           />
-          {item.id === currentUser.id && (
+          {registrationEnabled && item.id === currentUser.id && !manager && (
             <Accordion>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="subtitle1" color="error">
@@ -375,7 +352,7 @@ const UserPage = () => {
               </AccordionDetails>
             </Accordion>
           )}
-          {item.id && item.id !== currentUser.id && manager && (
+          {item.id && manager && (
             <Accordion>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="subtitle1">
@@ -413,7 +390,7 @@ const UserPage = () => {
                   baseId={item.id}
                   keyBase="userId"
                   keyLink="notificationId"
-                  titleGetter={(it) => `${t(prefixString('event', it.type))} (${it.id})`}
+                  titleGetter={(it) => formatNotificationTitle(t, it, true)}
                   label={t('sharedNotifications')}
                 />
                 <LinkField

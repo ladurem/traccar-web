@@ -4,7 +4,6 @@ import {
 } from '@mui/material';
 import makeStyles from '@mui/styles/makeStyles';
 import CloseIcon from '@mui/icons-material/Close';
-import CachedIcon from '@mui/icons-material/Cached';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import { useTheme } from '@mui/material/styles';
 import { useDispatch, useSelector } from 'react-redux';
@@ -13,8 +12,8 @@ import { sessionActions } from '../store';
 import { useLocalization, useTranslation } from '../common/components/LocalizationProvider';
 import LoginLayout from './LoginLayout';
 import usePersistedState from '../common/util/usePersistedState';
-import logoSvg from '../resources/images/logo.svg';
 import { nativePostMessage } from '../common/components/NativeInterface';
+import LogoImage from './LogoImage';
 
 const useStyles = makeStyles((theme) => ({
   options: {
@@ -26,10 +25,6 @@ const useStyles = makeStyles((theme) => ({
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing(2),
-  },
-  logoContainer: {
-    textAlign: 'center',
-    color: theme.palette.primary.main,
   },
   extraContainer: {
     display: 'flex',
@@ -97,11 +92,6 @@ const LoginPage = () => {
   return (
     <LoginLayout>
       <div className={classes.options}>
-        <Tooltip title="Switch to Legacy App">
-          <IconButton onClick={() => window.localStorage.setItem('legacyApp', true) || window.location.replace('/')}>
-            <CachedIcon />
-          </IconButton>
-        </Tooltip>
         {(window.appInterface || (window.webkit && window.webkit.messageHandlers.appInterface)) && (
           <Tooltip title={t('settingsServer')}>
             <IconButton onClick={() => navigate('/change-server')}>
@@ -111,13 +101,7 @@ const LoginPage = () => {
         )}
       </div>
       <div className={classes.container}>
-        {useMediaQuery(theme.breakpoints.down('lg')) && (
-          <div className={classes.logoContainer}>
-            <svg height="64" width="240">
-              <use xlinkHref={`${logoSvg}#img`} />
-            </svg>
-          </div>
-        )}
+        {useMediaQuery(theme.breakpoints.down('lg')) && <LogoImage color={theme.palette.primary.main} />}
         <TextField
           required
           error={failed}

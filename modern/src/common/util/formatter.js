@@ -17,7 +17,7 @@ export const formatNumber = (value, precision = 1) => Number(value.toFixed(preci
 
 export const formatPercentage = (value) => `${value}%`;
 
-export const formatTime = (value, format = 'YYYY-MM-DD HH:mm:ss') => moment(value).format(format);
+export const formatTime = (value, format = 'YYYY-MM-DD HH:mm:ss') => (value ? moment(value).format(format) : '');
 
 export const formatStatus = (value, t) => t(prefixString('deviceStatus', value));
 export const formatAlarm = (value, t) => (value ? t(prefixString('alarm', value)) : '');
@@ -96,4 +96,23 @@ export const getBatteryStatus = (batteryLevel) => {
     return 'medium';
   }
   return 'negative';
+};
+
+export const formatNotificationTitle = (t, notification, includeId) => {
+  let title = t(prefixString('event', notification.type));
+  if (notification.type === 'alarm') {
+    const alarmString = notification.attributes.alarms;
+    if (alarmString) {
+      const alarms = alarmString.split(',');
+      if (alarms.length > 1) {
+        title += ` (${alarms.length})`;
+      } else {
+        title += ` ${formatAlarm(alarms[0], t)}`;
+      }
+    }
+  }
+  if (includeId) {
+    title += ` [${notification.id}]`;
+  }
+  return title;
 };

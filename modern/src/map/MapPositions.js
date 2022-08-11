@@ -1,16 +1,19 @@
-import { useCallback, useEffect } from 'react';
+import { useId, useCallback, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-
 import { map } from './core/MapView';
 import { getStatusColor } from '../common/util/formatter';
 import usePersistedState from '../common/util/usePersistedState';
 import { mapIconKey } from './core/preloadImages';
+import { findFonts } from './core/mapUtil';
+import { useAttributePreference } from '../common/util/preferences';
 
 const MapPositions = ({ positions, onClick, showStatus }) => {
-  const id = 'positions';
+  const id = useId();
   const clusters = `${id}-clusters`;
 
   const devices = useSelector((state) => state.devices.items);
+
+  const iconScale = useAttributePreference('iconScale', 1);
 
   const [mapCluster] = usePersistedState('mapCluster', true);
 
@@ -28,7 +31,14 @@ const MapPositions = ({ positions, onClick, showStatus }) => {
   const onMouseEnter = () => map.getCanvas().style.cursor = 'pointer';
   const onMouseLeave = () => map.getCanvas().style.cursor = '';
 
+  const onMapClick = useCallback((event) => {
+    if (!event.defaultPrevented) {
+      onClick();
+    }
+  }, [onClick]);
+
   const onMarkerClick = useCallback((event) => {
+    event.preventDefault();
     const feature = event.features[0];
     if (onClick) {
       onClick(feature.properties.id, feature.properties.deviceId);
@@ -36,6 +46,7 @@ const MapPositions = ({ positions, onClick, showStatus }) => {
   }, [onClick]);
 
   const onClusterClick = useCallback((event) => {
+    event.preventDefault();
     const features = map.queryRenderedFeatures(event.point, {
       layers: [clusters],
     });
@@ -68,12 +79,13 @@ const MapPositions = ({ positions, onClick, showStatus }) => {
       filter: ['!', ['has', 'point_count']],
       layout: {
         'icon-image': '{category}-{color}',
+        'icon-size': iconScale,
         'icon-allow-overlap': true,
         'text-field': '{name}',
         'text-allow-overlap': true,
         'text-anchor': 'bottom',
-        'text-offset': [0, -2],
-        'text-font': ['Roboto Regular'],
+        'text-offset': [0, -2 * iconScale],
+        'text-font': findFonts(map),
         'text-size': 12,
       },
       paint: {
@@ -88,8 +100,9 @@ const MapPositions = ({ positions, onClick, showStatus }) => {
       filter: ['has', 'point_count'],
       layout: {
         'icon-image': 'background',
+        'icon-size': iconScale,
         'text-field': '{point_count_abbreviated}',
-        'text-font': ['Roboto Regular'],
+        'text-font': findFonts(map),
         'text-size': 14,
       },
     });
@@ -100,6 +113,7 @@ const MapPositions = ({ positions, onClick, showStatus }) => {
     map.on('mouseleave', clusters, onMouseLeave);
     map.on('click', id, onMarkerClick);
     map.on('click', clusters, onClusterClick);
+    map.on('click', onMapClick);
 
     return () => {
       map.off('mouseenter', id, onMouseEnter);
@@ -108,6 +122,7 @@ const MapPositions = ({ positions, onClick, showStatus }) => {
       map.off('mouseleave', clusters, onMouseLeave);
       map.off('click', id, onMarkerClick);
       map.off('click', clusters, onClusterClick);
+      map.off('click', onMapClick);
 
       if (map.getLayer(id)) {
         map.removeLayer(id);

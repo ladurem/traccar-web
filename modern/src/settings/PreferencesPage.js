@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-  Accordion, AccordionSummary, AccordionDetails, Typography, Container, FormControl, InputLabel, Select, MenuItem, Checkbox, FormControlLabel, FormGroup,
+  Accordion, AccordionSummary, AccordionDetails, Typography, Container, FormControl, InputLabel, Select, MenuItem, Checkbox, FormControlLabel, FormGroup, InputAdornment, IconButton, OutlinedInput, Autocomplete, TextField, createFilterOptions,
 } from '@mui/material';
 import makeStyles from '@mui/styles/makeStyles';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import CachedIcon from '@mui/icons-material/Cached';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useLocalization, useTranslation, useTranslationKeys } from '../common/components/LocalizationProvider';
 import usePersistedState from '../common/util/usePersistedState';
 import PageLayout from '../common/components/PageLayout';
@@ -15,6 +17,15 @@ import { prefixString, unprefixString } from '../common/util/stringUtils';
 import SelectField from '../common/components/SelectField';
 import useMapStyles from '../map/core/useMapStyles';
 import useMapOverlays from '../map/overlay/useMapOverlays';
+import { useCatch } from '../reactHelper';
+
+const deviceFields = [
+  { id: 'name', name: 'sharedName' },
+  { id: 'uniqueId', name: 'deviceIdentifier' },
+  { id: 'phone', name: 'sharedPhone' },
+  { id: 'model', name: 'deviceModel' },
+  { id: 'contact', name: 'deviceContact' },
+];
 
 const useStyles = makeStyles((theme) => ({
   container: {
@@ -25,6 +36,10 @@ const useStyles = makeStyles((theme) => ({
     flexDirection: 'column',
     gap: theme.spacing(2),
     paddingBottom: theme.spacing(3),
+  },
+  tokenActions: {
+    display: 'flex',
+    flexDirection: 'column',
   },
 }));
 
@@ -37,6 +52,8 @@ const PreferencesPage = () => {
 
   const { languages, language, setLanguage } = useLocalization();
   const languageList = Object.entries(languages).map((values) => ({ code: values[0], name: values[1].name }));
+
+  const [token, setToken] = useState();
 
   const mapStyles = useMapStyles();
   const [activeMapStyles, setActiveMapStyles] = usePersistedState('activeMapStyles', ['locationIqStreets', 'osm', 'carto']);
@@ -53,10 +70,27 @@ const PreferencesPage = () => {
   const [mapCluster, setMapCluster] = usePersistedState('mapCluster', true);
   const [mapOnSelect, setMapOnSelect] = usePersistedState('mapOnSelect', false);
 
+  const filter = createFilterOptions();
+
+  const generateToken = useCatch(async () => {
+    const response = await fetch('/api/session/token', {
+      method: 'POST',
+      body: new URLSearchParams(),
+    });
+    if (response.ok) {
+      setToken(await response.text());
+    } else {
+      throw Error(await response.text());
+    }
+  });
+
   const alarms = useTranslationKeys((it) => it.startsWith('alarm')).map((it) => ({
     key: unprefixString('alarm', it),
     name: t(it),
   }));
+
+  const [devicePrimary, setDevicePrimary] = usePersistedState('devicePrimary', 'name');
+  const [deviceSecondary, setDeviceSecondary] = usePersistedState('deviceSecondary', '');
 
   const [soundEvents, setSoundEvents] = usePersistedState('soundEvents', []);
   const [soundAlarms, setSoundAlarms] = usePersistedState('soundAlarms', ['sos']);
@@ -80,6 +114,29 @@ const PreferencesPage = () => {
               >
                 {languageList.map((it) => <MenuItem key={it.code} value={it.code}>{it.name}</MenuItem>)}
               </Select>
+            </FormControl>
+            <FormControl>
+              <InputLabel>{t('userToken')}</InputLabel>
+              <OutlinedInput
+                multiline
+                rows={6}
+                readOnly
+                type="text"
+                label={t('userToken')}
+                value={token || ''}
+                endAdornment={(
+                  <InputAdornment position="end">
+                    <div className={classes.tokenActions}>
+                      <IconButton size="small" edge="end" onClick={generateToken} disabled={!!token}>
+                        <CachedIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" edge="end" onClick={() => navigator.clipboard.writeText(token)} disabled={!token}>
+                        <ContentCopyIcon fontSize="small" />
+                      </IconButton>
+                    </div>
+                  </InputAdornment>
+                )}
+              />
             </FormControl>
           </AccordionDetails>
         </Accordion>
@@ -136,19 +193,29 @@ const PreferencesPage = () => {
                 ))}
               </Select>
             </FormControl>
-            <FormControl>
-              <InputLabel>{t('sharedAttributes')}</InputLabel>
-              <Select
-                label={t('sharedAttributes')}
-                value={positionItems}
-                onChange={(e) => setPositionItems(e.target.value)}
-                multiple
-              >
-                {Object.keys(positionAttributes).map((key) => (
-                  <MenuItem key={key} value={key}>{positionAttributes[key].name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              multiple
+              freeSolo
+              options={Object.keys(positionAttributes)}
+              getOptionLabel={(option) => (positionAttributes.hasOwnProperty(option) ? positionAttributes[option].name : option)}
+              value={positionItems}
+              onChange={(_, option) => {
+                setPositionItems(option);
+              }}
+              filterOptions={(options, params) => {
+                const filtered = filter(options, params);
+                if (params.inputValue && !filtered.includes(params.inputValue)) {
+                  filtered.push(params.inputValue);
+                }
+                return filtered;
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder={t('sharedAttributes')}
+                />
+              )}
+            />
             <FormGroup>
               <FormControlLabel
                 control={<Checkbox checked={mapGeofences} onChange={(e) => setMapGeofences(e.target.checked)} />}
@@ -171,6 +238,30 @@ const PreferencesPage = () => {
                 label={t('mapOnSelect')}
               />
             </FormGroup>
+          </AccordionDetails>
+        </Accordion>
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle1">
+              {t('deviceTitle')}
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails className={classes.details}>
+            <SelectField
+              emptyValue={null}
+              value={devicePrimary}
+              onChange={(e) => setDevicePrimary(e.target.value)}
+              data={deviceFields}
+              titleGetter={(it) => t(it.name)}
+              label={t('sharedPrimary')}
+            />
+            <SelectField
+              value={deviceSecondary}
+              onChange={(e) => setDeviceSecondary(e.target.value)}
+              data={deviceFields}
+              titleGetter={(it) => t(it.name)}
+              label={t('sharedSecondary')}
+            />
           </AccordionDetails>
         </Accordion>
         <Accordion>

@@ -21,6 +21,7 @@ import MapRoutePath from '../map/MapRoutePath';
 import AddressValue from '../common/components/AddressValue';
 import TableShimmer from '../common/components/TableShimmer';
 import MapMarkers from '../map/MapMarkers';
+import MapCamera from '../map/MapCamera';
 
 const columnsArray = [
   ['startTime', 'reportStartTime'],
@@ -148,6 +149,7 @@ const TripReportPage = () => {
                 <>
                   <MapRoutePath positions={route} />
                   <MapMarkers markers={createMarkers()} />
+                  <MapCamera positions={route} />
                 </>
               )}
             </MapView>

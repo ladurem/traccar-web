@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import TextField from '@mui/material/TextField';
-
+import moment from 'moment';
 import {
   Accordion,
   AccordionSummary,
@@ -8,6 +7,7 @@ import {
   Typography,
   FormControlLabel,
   Checkbox,
+  TextField,
 } from '@mui/material';
 import makeStyles from '@mui/styles/makeStyles';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -17,7 +17,6 @@ import EditAttributesAccordion from './components/EditAttributesAccordion';
 import SelectField from '../common/components/SelectField';
 import deviceCategories from '../common/util/deviceCategories';
 import LinkField from '../common/components/LinkField';
-import { prefixString } from '../common/util/stringUtils';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import useDeviceAttributes from '../common/attributes/useDeviceAttributes';
 import { useAdministrator } from '../common/util/permissions';
@@ -25,6 +24,7 @@ import SettingsMenu from './components/SettingsMenu';
 import useCommonDeviceAttributes from '../common/attributes/useCommonDeviceAttributes';
 import useFeatures from '../common/util/useFeatures';
 import { useCatch } from '../reactHelper';
+import { formatNotificationTitle } from '../common/util/formatter';
 
 const useStyles = makeStyles((theme) => ({
   details: {
@@ -132,12 +132,18 @@ const DevicePage = () => {
                 }))}
                 label={t('deviceCategory')}
               />
-              {admin && (
-                <FormControlLabel
-                  control={<Checkbox checked={item.disabled} onChange={(event) => setItem({ ...item, disabled: event.target.checked })} />}
-                  label={t('sharedDisabled')}
-                />
-              )}
+              <TextField
+                label={t('userExpirationTime')}
+                type="date"
+                value={(item.expirationTime && moment(item.expirationTime).locale('en').format(moment.HTML5_FMT.DATE)) || '2099-01-01'}
+                onChange={(e) => setItem({ ...item, expirationTime: moment(e.target.value, moment.HTML5_FMT.DATE).format() })}
+                disabled={!admin}
+              />
+              <FormControlLabel
+                control={<Checkbox checked={item.disabled} onChange={(event) => setItem({ ...item, disabled: event.target.checked })} />}
+                label={t('sharedDisabled')}
+                disabled={!admin}
+              />
             </AccordionDetails>
           </Accordion>
           {item.id && (
@@ -185,7 +191,7 @@ const DevicePage = () => {
                   baseId={item.id}
                   keyBase="deviceId"
                   keyLink="notificationId"
-                  titleGetter={(it) => t(prefixString('event', it.type))}
+                  titleGetter={(it) => formatNotificationTitle(t, it)}
                   label={t('sharedNotifications')}
                 />
                 {!features.disableDrivers && (
