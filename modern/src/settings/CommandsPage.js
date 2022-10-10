@@ -12,6 +12,8 @@ import SettingsMenu from './components/SettingsMenu';
 import CollectionFab from './components/CollectionFab';
 import CollectionActions from './components/CollectionActions';
 import TableShimmer from '../common/components/TableShimmer';
+import SearchHeader, { filterByKeyword } from './components/SearchHeader';
+import { useRestriction } from '../common/util/permissions';
 
 const useStyles = makeStyles((theme) => ({
   columnAction: {
@@ -26,7 +28,9 @@ const CommandsPage = () => {
 
   const [timestamp, setTimestamp] = useState(Date.now());
   const [items, setItems] = useState([]);
+  const [searchKeyword, setSearchKeyword] = useState('');
   const [loading, setLoading] = useState(false);
+  const limitCommands = useRestriction('limitCommands');
 
   useEffectAsync(async () => {
     setLoading(true);
@@ -44,29 +48,32 @@ const CommandsPage = () => {
 
   return (
     <PageLayout menu={<SettingsMenu />} breadcrumbs={['settingsTitle', 'sharedSavedCommands']}>
+      <SearchHeader keyword={searchKeyword} setKeyword={setSearchKeyword} />
       <Table>
         <TableHead>
           <TableRow>
             <TableCell>{t('sharedDescription')}</TableCell>
             <TableCell>{t('sharedType')}</TableCell>
             <TableCell>{t('commandSendSms')}</TableCell>
-            <TableCell className={classes.columnAction} />
+            {!limitCommands && <TableCell className={classes.columnAction} />}
           </TableRow>
         </TableHead>
         <TableBody>
-          {!loading ? items.map((item) => (
+          {!loading ? items.filter(filterByKeyword(searchKeyword)).map((item) => (
             <TableRow key={item.id}>
               <TableCell>{item.description}</TableCell>
               <TableCell>{t(prefixString('command', item.type))}</TableCell>
               <TableCell>{formatBoolean(item.textChannel, t)}</TableCell>
-              <TableCell className={classes.columnAction} padding="none">
-                <CollectionActions itemId={item.id} editPath="/settings/command" endpoint="commands" setTimestamp={setTimestamp} />
-              </TableCell>
+              {!limitCommands && (
+                <TableCell className={classes.columnAction} padding="none">
+                  <CollectionActions itemId={item.id} editPath="/settings/command" endpoint="commands" setTimestamp={setTimestamp} />
+                </TableCell>
+              )}
             </TableRow>
-          )) : (<TableShimmer columns={4} endAction />)}
+          )) : (<TableShimmer columns={limitCommands ? 3 : 4} endAction />)}
         </TableBody>
       </Table>
-      <CollectionFab editPath="/settings/command" />
+      <CollectionFab editPath="/settings/command" disabled={limitCommands} />
     </PageLayout>
   );
 };

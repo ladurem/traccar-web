@@ -19,7 +19,7 @@ import DevicesList from './DevicesList';
 import MapView from '../map/core/MapView';
 import MapSelectedDevice from '../map/main/MapSelectedDevice';
 import MapAccuracy from '../map/main/MapAccuracy';
-import MapGeofence from '../map/main/MapGeofence';
+import MapGeofence from '../map/MapGeofence';
 import MapCurrentLocation from '../map/MapCurrentLocation';
 import BottomMenu from '../common/components/BottomMenu';
 import { useTranslation } from '../common/components/LocalizationProvider';
@@ -32,7 +32,6 @@ import usePersistedState from '../common/util/usePersistedState';
 import MapLiveRoutes from '../map/main/MapLiveRoutes';
 import { useDeviceReadonly } from '../common/util/permissions';
 import MapPositions from '../map/MapPositions';
-import MapDirection from '../map/MapDirection';
 import MapOverlay from '../map/overlay/MapOverlay';
 import MapGeocoder from '../map/geocoder/MapGeocoder';
 import MapScale from '../map/MapScale';
@@ -148,7 +147,6 @@ const MainPage = () => {
 
   const [mapOnSelect] = usePersistedState('mapOnSelect', false);
 
-  const [mapGeofences] = usePersistedState('mapGeofences', true);
   const [mapLiveRoutes] = usePersistedState('mapLiveRoutes', false);
 
   const selectedDeviceId = useSelector((state) => state.devices.selectedId);
@@ -179,6 +177,8 @@ const MainPage = () => {
     setDevicesOpen(!devicesOpen);
   };
 
+  const deviceStatusCount = (status) => Object.values(devices).filter((d) => d.status === status).length;
+
   useEffect(() => setDevicesOpen(desktop), [desktop]);
 
   useEffect(() => {
@@ -191,14 +191,38 @@ const MainPage = () => {
     dispatch(devicesActions.select(deviceId));
   }, [dispatch]);
 
+  const deviceGroups = (device) => {
+    const groupIds = [];
+    let { groupId } = device;
+    while (groupId) {
+      groupIds.push(groupId);
+      groupId = groups[groupId]?.groupId || 0;
+    }
+    return groupIds;
+  };
+
   useEffect(() => {
     const filtered = Object.values(devices)
       .filter((device) => !filterStatuses.length || filterStatuses.includes(device.status))
-      .filter((device) => !filterGroups.length || filterGroups.includes(device.groupId))
+      .filter((device) => !filterGroups.length || deviceGroups(device).some((id) => filterGroups.includes(id)))
       .filter((device) => {
         const keyword = filterKeyword.toLowerCase();
         return [device.name, device.uniqueId, device.phone, device.model, device.contact].some((s) => s && s.toLowerCase().includes(keyword));
       });
+    switch (filterSort) {
+      case 'name':
+        filtered.sort((device1, device2) => device1.name.localeCompare(device2.name));
+        break;
+      case 'lastUpdate':
+        filtered.sort((device1, device2) => {
+          const time1 = device1.lastUpdate ? moment(device1.lastUpdate).valueOf() : 0;
+          const time2 = device2.lastUpdate ? moment(device2.lastUpdate).valueOf() : 0;
+          return time2 - time1;
+        });
+        break;
+      default:
+        break;
+    }
     if (filterSort === 'lastUpdate') {
       filtered.sort((device1, device2) => {
         const time1 = device1.lastUpdate ? moment(device1.lastUpdate).valueOf() : 0;
@@ -216,13 +240,10 @@ const MainPage = () => {
     <div className={classes.root}>
       <MapView>
         <MapOverlay />
-        {mapGeofences && <MapGeofence />}
-        <MapAccuracy />
+        <MapGeofence />
+        <MapAccuracy positions={filteredPositions} />
         {mapLiveRoutes && <MapLiveRoutes />}
-        <MapPositions positions={filteredPositions} onClick={onClick} showStatus />
-        {selectedPosition && selectedPosition.course && (
-          <MapDirection position={selectedPosition} />
-        )}
+        <MapPositions positions={filteredPositions} onClick={onClick} selectedPosition={selectedPosition} showStatus />
         <MapDefaultCamera />
         <MapSelectedDevice />
         <PoiMap />
@@ -286,9 +307,9 @@ const MainPage = () => {
                     onChange={(e) => setFilterStatuses(e.target.value)}
                     multiple
                   >
-                    <MenuItem value="online">{t('deviceStatusOnline')}</MenuItem>
-                    <MenuItem value="offline">{t('deviceStatusOffline')}</MenuItem>
-                    <MenuItem value="unknown">{t('deviceStatusUnknown')}</MenuItem>
+                    <MenuItem value="online">{`${t('deviceStatusOnline')} (${deviceStatusCount('online')})`}</MenuItem>
+                    <MenuItem value="offline">{`${t('deviceStatusOffline')} (${deviceStatusCount('offline')})`}</MenuItem>
+                    <MenuItem value="unknown">{`${t('deviceStatusUnknown')} (${deviceStatusCount('unknown')})`}</MenuItem>
                   </Select>
                 </FormControl>
                 <FormControl>
@@ -299,7 +320,9 @@ const MainPage = () => {
                     onChange={(e) => setFilterGroups(e.target.value)}
                     multiple
                   >
-                    {Object.values(groups).map((group) => (<MenuItem key={group.id} value={group.id}>{group.name}</MenuItem>))}
+                    {Object.values(groups).sort((a, b) => a.name.localeCompare(b.name)).map((group) => (
+                      <MenuItem key={group.id} value={group.id}>{group.name}</MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
                 <FormControl>
@@ -311,6 +334,7 @@ const MainPage = () => {
                     displayEmpty
                   >
                     <MenuItem value="">{'\u00a0'}</MenuItem>
+                    <MenuItem value="name">{t('sharedName')}</MenuItem>
                     <MenuItem value="lastUpdate">{t('deviceLastUpdate')}</MenuItem>
                   </Select>
                 </FormControl>
