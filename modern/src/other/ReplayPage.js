@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import MapView from '../map/core/MapView';
 import MapRoutePath from '../map/MapRoutePath';
+import MapRoutePoints from '../map/MapRoutePoints';
 import MapPositions from '../map/MapPositions';
 import { formatTime } from '../common/util/formatter';
 import ReportFilter from '../reports/components/ReportFilter';
@@ -23,6 +24,8 @@ import { useTranslation } from '../common/components/LocalizationProvider';
 import { useCatch } from '../reactHelper';
 import MapCamera from '../map/MapCamera';
 import MapGeofence from '../map/MapGeofence';
+import StatusCard from '../common/components/StatusCard';
+import { usePreference } from '../common/util/preferences';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -79,11 +82,14 @@ const ReplayPage = () => {
   const navigate = useNavigate();
   const timerRef = useRef();
 
+  const hours12 = usePreference('twelveHourFormat');
+
   const defaultDeviceId = useSelector((state) => state.devices.selectedId);
 
   const [positions, setPositions] = useState([]);
   const [index, setIndex] = useState(0);
   const [selectedDeviceId, setSelectedDeviceId] = useState(defaultDeviceId);
+  const [showCard, setShowCard] = useState(false);
   const [from, setFrom] = useState();
   const [to, setTo] = useState();
   const [expanded, setExpanded] = useState(true);
@@ -98,12 +104,6 @@ const ReplayPage = () => {
     }
     return null;
   });
-
-  const onClick = useCallback((positionId) => {
-    if (positionId) {
-      navigate(`/position/${positionId}`);
-    }
-  }, [navigate]);
 
   useEffect(() => {
     if (playing && positions.length > 0) {
@@ -123,6 +123,14 @@ const ReplayPage = () => {
       setPlaying(false);
     }
   }, [index, positions]);
+
+  const onPointClick = useCallback((_, index) => {
+    setIndex(index);
+  }, [setIndex]);
+
+  const onMarkerClick = useCallback((positionId) => {
+    setShowCard(!!positionId);
+  }, [setShowCard]);
 
   const handleSubmit = useCatch(async ({ deviceId, from, to }) => {
     setSelectedDeviceId(deviceId);
@@ -154,8 +162,9 @@ const ReplayPage = () => {
       <MapView>
         <MapGeofence />
         <MapRoutePath positions={positions} />
+        <MapRoutePoints positions={positions} onClick={onPointClick} />
         {index < positions.length && (
-          <MapPositions positions={[positions[index]]} onClick={onClick} />
+          <MapPositions positions={[positions[index]]} onClick={onMarkerClick} titleField="fixTime" />
         )}
       </MapView>
       <MapCamera positions={positions} />
@@ -201,7 +210,7 @@ const ReplayPage = () => {
                 <IconButton onClick={() => setIndex((index) => index + 1)} disabled={playing || index >= positions.length - 1}>
                   <FastForwardIcon />
                 </IconButton>
-                {formatTime(positions[index].fixTime)}
+                {formatTime(positions[index].fixTime, 'seconds', hours12)}
               </div>
             </>
           ) : (
@@ -209,6 +218,14 @@ const ReplayPage = () => {
           )}
         </Paper>
       </div>
+      {showCard && index < positions.length && (
+        <StatusCard
+          deviceId={selectedDeviceId}
+          position={positions[index]}
+          onClose={() => setShowCard(false)}
+          disableActions
+        />
+      )}
     </div>
   );
 };
