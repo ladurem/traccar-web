@@ -27,7 +27,6 @@ const deviceFields = [
   { id: 'phone', name: 'sharedPhone' },
   { id: 'model', name: 'deviceModel' },
   { id: 'contact', name: 'deviceContact' },
-  { id: 'geofenceIds', name: 'sharedGeofences' },
 ];
 
 const useStyles = makeStyles((theme) => ({
@@ -238,6 +237,18 @@ const PreferencesPage = () => {
                     label={t('mapLiveRoutes')}
                     value={attributes.mapLiveRoutes || 'none'}
                     onChange={(e) => setAttributes({ ...attributes, mapLiveRoutes: e.target.value })}
+                  >
+                    <MenuItem value="none">{t('sharedDisabled')}</MenuItem>
+                    <MenuItem value="selected">{t('deviceSelected')}</MenuItem>
+                    <MenuItem value="all">{t('notificationAlways')}</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl>
+                  <InputLabel>{t('mapDirection')}</InputLabel>
+                  <Select
+                    label={t('mapDirection')}
+                    value={attributes.mapDirection || 'selected'}
+                    onChange={(e) => setAttributes({ ...attributes, mapDirection: e.target.value })}
                   >
                     <MenuItem value="none">{t('sharedDisabled')}</MenuItem>
                     <MenuItem value="selected">{t('deviceSelected')}</MenuItem>

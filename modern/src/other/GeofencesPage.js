@@ -11,7 +11,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useNavigate } from 'react-router-dom';
 import MapView from '../map/core/MapView';
 import MapCurrentLocation from '../map/MapCurrentLocation';
-import MapGeofenceEdit from '../map/MapGeofenceEdit';
+import MapGeofenceEdit from '../map/draw/MapGeofenceEdit';
 import GeofencesList from './GeofencesList';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import MapGeocoder from '../map/geocoder/MapGeocoder';
@@ -31,6 +31,9 @@ const useStyles = makeStyles((theme) => ({
     [theme.breakpoints.down('sm')]: {
       flexDirection: 'column-reverse',
     },
+  },
+  drawer: {
+    zIndex: 1,
   },
   drawerPaper: {
     position: 'relative',
@@ -101,6 +104,7 @@ const GeofencesPage = () => {
     <div className={classes.root}>
       <div className={classes.content}>
         <Drawer
+          className={classes.drawer}
           anchor={isPhone ? 'bottom' : 'left'}
           variant="permanent"
           classes={{ paper: classes.drawerPaper }}

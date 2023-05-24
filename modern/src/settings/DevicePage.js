@@ -16,15 +16,12 @@ import EditItemView from './components/EditItemView';
 import EditAttributesAccordion from './components/EditAttributesAccordion';
 import SelectField from '../common/components/SelectField';
 import deviceCategories from '../common/util/deviceCategories';
-import LinkField from '../common/components/LinkField';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import useDeviceAttributes from '../common/attributes/useDeviceAttributes';
 import { useAdministrator } from '../common/util/permissions';
 import SettingsMenu from './components/SettingsMenu';
 import useCommonDeviceAttributes from '../common/attributes/useCommonDeviceAttributes';
-import useFeatures from '../common/util/useFeatures';
 import { useCatch } from '../reactHelper';
-import { formatNotificationTitle } from '../common/util/formatter';
 
 const useStyles = makeStyles((theme) => ({
   details: {
@@ -43,8 +40,6 @@ const DevicePage = () => {
 
   const commonDeviceAttributes = useCommonDeviceAttributes(t);
   const deviceAttributes = useDeviceAttributes(t);
-
-  const features = useFeatures();
 
   const [item, setItem] = useState();
 
@@ -71,7 +66,7 @@ const DevicePage = () => {
       setItem={setItem}
       validate={validate}
       menu={<SettingsMenu />}
-      breadcrumbs={['sharedDevice']}
+      breadcrumbs={['settingsTitle', 'sharedDevice']}
     >
       {item && (
         <>
@@ -91,6 +86,7 @@ const DevicePage = () => {
                 value={item.uniqueId || ''}
                 onChange={(event) => setItem({ ...item, uniqueId: event.target.value })}
                 label={t('deviceIdentifier')}
+                helperText={t('deviceIdentifierHelp')}
               />
             </AccordionDetails>
           </Accordion>
@@ -136,7 +132,7 @@ const DevicePage = () => {
                 label={t('userExpirationTime')}
                 type="date"
                 value={(item.expirationTime && moment(item.expirationTime).locale('en').format(moment.HTML5_FMT.DATE)) || '2099-01-01'}
-                onChange={(e) => setItem({ ...item, expirationTime: moment(e.target.value, moment.HTML5_FMT.DATE).format() })}
+                onChange={(e) => setItem({ ...item, expirationTime: moment(e.target.value, moment.HTML5_FMT.DATE).locale('en').format() })}
                 disabled={!admin}
               />
               <FormControlLabel
@@ -169,74 +165,6 @@ const DevicePage = () => {
             setAttributes={(attributes) => setItem({ ...item, attributes })}
             definitions={{ ...commonDeviceAttributes, ...deviceAttributes }}
           />
-          {item.id && (
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">
-                  {t('sharedConnections')}
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails className={classes.details}>
-                <LinkField
-                  endpointAll="/api/geofences"
-                  endpointLinked={`/api/geofences?deviceId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="deviceId"
-                  keyLink="geofenceId"
-                  label={t('sharedGeofences')}
-                />
-                <LinkField
-                  endpointAll="/api/notifications"
-                  endpointLinked={`/api/notifications?deviceId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="deviceId"
-                  keyLink="notificationId"
-                  titleGetter={(it) => formatNotificationTitle(t, it)}
-                  label={t('sharedNotifications')}
-                />
-                {!features.disableDrivers && (
-                  <LinkField
-                    endpointAll="/api/drivers"
-                    endpointLinked={`/api/drivers?deviceId=${item.id}`}
-                    baseId={item.id}
-                    keyBase="deviceId"
-                    keyLink="driverId"
-                    label={t('sharedDrivers')}
-                  />
-                )}
-                {!features.disableComputedAttributes && (
-                  <LinkField
-                    endpointAll="/api/attributes/computed"
-                    endpointLinked={`/api/attributes/computed?deviceId=${item.id}`}
-                    baseId={item.id}
-                    keyBase="deviceId"
-                    keyLink="attributeId"
-                    titleGetter={(it) => it.description}
-                    label={t('sharedComputedAttributes')}
-                  />
-                )}
-                <LinkField
-                  endpointAll="/api/commands"
-                  endpointLinked={`/api/commands?deviceId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="deviceId"
-                  keyLink="commandId"
-                  titleGetter={(it) => it.description}
-                  label={t('sharedSavedCommands')}
-                />
-                {!features.disableMaintenance && (
-                  <LinkField
-                    endpointAll="/api/maintenance"
-                    endpointLinked={`/api/maintenance?deviceId=${item.id}`}
-                    baseId={item.id}
-                    keyBase="deviceId"
-                    keyLink="maintenanceId"
-                    label={t('sharedMaintenance')}
-                  />
-                )}
-              </AccordionDetails>
-            </Accordion>
-          )}
         </>
       )}
     </EditItemView>

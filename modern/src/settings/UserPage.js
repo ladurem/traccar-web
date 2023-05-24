@@ -22,7 +22,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import moment from 'moment';
 import EditItemView from './components/EditItemView';
 import EditAttributesAccordion from './components/EditAttributesAccordion';
-import LinkField from '../common/components/LinkField';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import useUserAttributes from '../common/attributes/useUserAttributes';
 import { sessionActions } from '../store';
@@ -32,8 +31,8 @@ import useCommonUserAttributes from '../common/attributes/useCommonUserAttribute
 import { useAdministrator, useRestriction, useManager } from '../common/util/permissions';
 import useQuery from '../common/util/useQuery';
 import { useCatch } from '../reactHelper';
-import { formatNotificationTitle } from '../common/util/formatter';
 import useMapStyles from '../map/core/useMapStyles';
+import { map } from '../map/core/MapView';
 
 const useStyles = makeStyles((theme) => ({
   details: {
@@ -56,6 +55,7 @@ const UserPage = () => {
 
   const currentUser = useSelector((state) => state.session.user);
   const registrationEnabled = useSelector((state) => state.session.server.registration);
+  const openIdForced = useSelector((state) => state.session.server.openIdForce);
 
   const mapStyles = useMapStyles();
   const commonUserAttributes = useCommonUserAttributes(t);
@@ -136,11 +136,13 @@ const UserPage = () => {
                 label={t('userEmail')}
                 disabled={fixedEmail}
               />
-              <TextField
-                type="password"
-                onChange={(event) => setItem({ ...item, password: event.target.value })}
-                label={t('userPassword')}
-              />
+              {!openIdForced && (
+                <TextField
+                  type="password"
+                  onChange={(event) => setItem({ ...item, password: event.target.value })}
+                  label={t('userPassword')}
+                />
+              )}
             </AccordionDetails>
           </Accordion>
           <Accordion>
@@ -169,24 +171,6 @@ const UserPage = () => {
                   ))}
                 </Select>
               </FormControl>
-              <TextField
-                type="number"
-                value={item.latitude || 0}
-                onChange={(event) => setItem({ ...item, latitude: Number(event.target.value) })}
-                label={t('positionLatitude')}
-              />
-              <TextField
-                type="number"
-                value={item.longitude || 0}
-                onChange={(event) => setItem({ ...item, longitude: Number(event.target.value) })}
-                label={t('positionLongitude')}
-              />
-              <TextField
-                type="number"
-                value={item.zoom || 0}
-                onChange={(event) => setItem({ ...item, zoom: Number(event.target.value) })}
-                label={t('serverZoom')}
-              />
               <FormControl>
                 <InputLabel>{t('settingsCoordinateFormat')}</InputLabel>
                 <Select
@@ -271,6 +255,48 @@ const UserPage = () => {
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="subtitle1">
+                {t('sharedLocation')}
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails className={classes.details}>
+              <TextField
+                type="number"
+                value={item.latitude || 0}
+                onChange={(event) => setItem({ ...item, latitude: Number(event.target.value) })}
+                label={t('positionLatitude')}
+              />
+              <TextField
+                type="number"
+                value={item.longitude || 0}
+                onChange={(event) => setItem({ ...item, longitude: Number(event.target.value) })}
+                label={t('positionLongitude')}
+              />
+              <TextField
+                type="number"
+                value={item.zoom || 0}
+                onChange={(event) => setItem({ ...item, zoom: Number(event.target.value) })}
+                label={t('serverZoom')}
+              />
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={() => {
+                  const { lng, lat } = map.getCenter();
+                  setItem({
+                    ...item,
+                    latitude: Number(lat.toFixed(6)),
+                    longitude: Number(lng.toFixed(6)),
+                    zoom: Number(map.getZoom().toFixed(1)),
+                  });
+                }}
+              >
+                {t('mapCurrentLocation')}
+              </Button>
+            </AccordionDetails>
+          </Accordion>
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="subtitle1">
                 {t('sharedPermissions')}
               </Typography>
             </AccordionSummary>
@@ -279,7 +305,7 @@ const UserPage = () => {
                 label={t('userExpirationTime')}
                 type="date"
                 value={(item.expirationTime && moment(item.expirationTime).locale('en').format(moment.HTML5_FMT.DATE)) || '2099-01-01'}
-                onChange={(e) => setItem({ ...item, expirationTime: moment(e.target.value, moment.HTML5_FMT.DATE).format() })}
+                onChange={(e) => setItem({ ...item, expirationTime: moment(e.target.value, moment.HTML5_FMT.DATE).locale('en').format() })}
                 disabled={!manager}
               />
               <TextField
@@ -364,100 +390,6 @@ const UserPage = () => {
                 >
                   {t('userDeleteAccount')}
                 </Button>
-              </AccordionDetails>
-            </Accordion>
-          )}
-          {item.id && manager && (
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">
-                  {t('sharedConnections')}
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails className={classes.details}>
-                <LinkField
-                  endpointAll="/api/devices?all=true"
-                  endpointLinked={`/api/devices?userId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="userId"
-                  keyLink="deviceId"
-                  label={t('deviceTitle')}
-                />
-                <LinkField
-                  endpointAll="/api/groups?all=true"
-                  endpointLinked={`/api/groups?userId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="userId"
-                  keyLink="groupId"
-                  label={t('settingsGroups')}
-                />
-                <LinkField
-                  endpointAll="/api/geofences?all=true"
-                  endpointLinked={`/api/geofences?userId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="userId"
-                  keyLink="geofenceId"
-                  label={t('sharedGeofences')}
-                />
-                <LinkField
-                  endpointAll="/api/notifications?all=true"
-                  endpointLinked={`/api/notifications?userId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="userId"
-                  keyLink="notificationId"
-                  titleGetter={(it) => formatNotificationTitle(t, it, true)}
-                  label={t('sharedNotifications')}
-                />
-                <LinkField
-                  endpointAll="/api/calendars?all=true"
-                  endpointLinked={`/api/calendars?userId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="userId"
-                  keyLink="calendarId"
-                  label={t('sharedCalendars')}
-                />
-                <LinkField
-                  endpointAll="/api/users?all=true"
-                  endpointLinked={`/api/users?userId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="userId"
-                  keyLink="managedUserId"
-                  label={t('settingsUsers')}
-                />
-                <LinkField
-                  endpointAll="/api/attributes/computed?all=true"
-                  endpointLinked={`/api/attributes/computed?userId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="userId"
-                  keyLink="attributeId"
-                  titleGetter={(it) => it.description}
-                  label={t('sharedComputedAttributes')}
-                />
-                <LinkField
-                  endpointAll="/api/drivers?all=true"
-                  endpointLinked={`/api/drivers?userId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="userId"
-                  keyLink="driverId"
-                  label={t('sharedDrivers')}
-                />
-                <LinkField
-                  endpointAll="/api/commands?all=true"
-                  endpointLinked={`/api/commands?userId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="userId"
-                  keyLink="commandId"
-                  titleGetter={(it) => it.description}
-                  label={t('sharedSavedCommands')}
-                />
-                <LinkField
-                  endpointAll="/api/maintenance?all=true"
-                  endpointLinked={`/api/maintenance?userId=${item.id}`}
-                  baseId={item.id}
-                  keyBase="userId"
-                  keyLink="maintenanceId"
-                  label={t('sharedMaintenance')}
-                />
               </AccordionDetails>
             </Accordion>
           )}
