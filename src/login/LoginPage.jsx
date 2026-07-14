@@ -60,6 +60,7 @@ const useStyles = makeStyles()((theme) => ({
   },
   link: {
     cursor: 'pointer',
+    color: theme.palette.mode === 'dark' ? theme.palette.secondary.main : theme.palette.primary.main,
   },
   flag: {
     marginRight: theme.spacing(1),
